@@ -1,0 +1,101 @@
+services:
+  mosquitto:
+    image: sbd-mosquitto:latest
+    build:
+      context: ./mosquitto
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "${MOSQUITTO_PORT}:1883"
+      - "${MOSQUITTO_TLS_PORT}:8883"
+      - "${MOSQUITTO_WS_PORT}:9001"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    restart: unless-stopped
+    networks:
+      - practice-network
+
+  node-red:
+    image: nodered/node-red:latest
+    container_name: node-red
+    ports:
+      - "${NODE_RED_PORT}:1880"
+    environment:
+      - TZ=${TIMEZONE}
+      - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_CREDENTIAL_SECRET}
+    volumes:
+      - ./node-red/data:/data
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    networks:
+      - practice-network
+
+  influxdb:
+    image: influxdb:2.7.12-alpine
+    container_name: influxdb
+    ports:
+      - "${INFLUXDB_PORT}:8086"
+    volumes:
+      - ./influxdb/data:/var/lib/influxdb2
+      - ./influxdb/config:/etc/influxdb2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_USERNAME}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_ADMIN_TOKEN}
+      - DOCKER_INFLUXDB_INIT_RETENTION=${INFLUXDB_RETENTION}
+    restart: unless-stopped
+    depends_on:
+      - node-red
+    networks:
+      - practice-network
+
+  coingecko-mqtt:
+    build:
+      context: ./coingecko-mqtt
+      dockerfile: Dockerfile
+    container_name: coingecko-mqtt
+    restart: unless-stopped
+    environment:
+      BROKER_HOST: mosquitto
+      BROKER_PORT: ${MOSQUITTO_PORT}
+      MQTT_USERNAME: ${MOSQUITTO_USERNAME}
+      MQTT_PASSWORD: ${MOSQUITTO_PASSWORD}
+      MQTT_QOS: ${COINGECKO_MQTT_QOS}
+      MQTT_RETAIN: ${COINGECKO_MQTT_RETAIN}
+      COINS: ${COINGECKO_COINS}
+      FIAT: ${COINGECKO_FIAT}
+      INTERVAL_SECONDS: ${COINGECKO_INTERVAL_SECONDS}
+      TOPIC_TEMPLATE: ${COINGECKO_TOPIC_TEMPLATE}
+      SYMBOL_MAP: ${COINGECKO_SYMBOL_MAP}
+    networks:
+      - practice-network
+    depends_on:
+      - mosquitto
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_INSTALL_PLUGINS=${GRAFANA_INSTALL_PLUGINS}
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL}
+    volumes:
+      - ./grafana:/var/lib/grafana
+    networks:
+      - practice-network
+    depends_on:
+      - influxdb
+
+networks:
+  practice-network:
