@@ -1,8 +1,7 @@
 # Memoria del Proceso ETL con Pentaho Data Integration
 
-**Autor:** Antonio Ortega Góngora 
-**Fecha:** 01/02/2026
-**Asignatura:** Sistemas de Big Data
+**Autor:** Antonio Ortega Góngora   
+**Asignatura:** Sistemas de Big Data   
 **Práctica:** Práctica ETL de datos mediante Pentaho
 
 ---
