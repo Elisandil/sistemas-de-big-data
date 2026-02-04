@@ -1,0 +1,40 @@
+services:
+  db_oltp:
+    image: mysql:8.0
+    container_name: pentaho_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "${MYSQL_LOCAL_PORT}"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - etl_network
+    command: --default-authentication-plugin=mysql_native_password
+
+  webspoon:
+    image: hiromuhota/webspoon:latest
+    container_name: pentaho_webspoon
+    restart: always
+    ports:
+      - "${WEBSPOON_PORT}:8080"
+    environment:
+      JAVA_OPTS: "-Xms1024m -Xmx2048m"
+    volumes:
+      - ./trabajo:/home/tomcat/trabajo
+    networks:
+      - etl_network
+    depends_on:
+      - db_oltp
+
+volumes:
+  mysql_data:
+
+networks:
+  etl_network:
+    driver: bridge
