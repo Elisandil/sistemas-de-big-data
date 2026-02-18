@@ -1,0 +1,35 @@
+{
+  "schemaName": "sensorData",
+  "dimensionFieldSpecs": [
+    {
+      "name": "sensor_id",
+      "dataType": "STRING"
+    },
+    {
+      "name": "location",
+      "dataType": "STRING"
+    },
+    {
+      "name": "status",
+      "dataType": "STRING"
+    }
+  ],
+  "metricFieldSpecs": [
+    {
+      "name": "temperature",
+      "dataType": "DOUBLE"
+    },
+    {
+      "name": "humidity",
+      "dataType": "DOUBLE"
+    }
+  ],
+  "dateTimeFieldSpecs": [
+    {
+      "name": "timestamp",
+      "dataType": "LONG",
+      "format": "1:MILLISECONDS:EPOCH",
+      "granularity": "1:MILLISECONDS"
+    }
+  ]
+}
