@@ -220,14 +220,14 @@ Al ejecutar las consultas, la consola de Pinot muestra metadatos clave:
 ### Dificultades Encontradas
 El principal reto fue adaptar una arquitectura pensada para un clúster de servidores físicos (AWS EC2) a un entorno local con recursos limitados. El consumo de memoria de la JVM (Java Virtual Machine) es alto para los componentes de Pinot, por lo que fue necesario ajustar los parámetros ``-Xmx`` y ``-Xms`` cuidadosamente para evitar el colapso del sistema anfitrión.
 
-1. ¿Por qué empresas reales usan Pinot?
+1. **¿Por qué empresas reales usan Pinot?**
 Empresas como Uber, LinkedIn o Stripe usan Pinot porque necesitan analítica de cara al usuario (User-Facing Analytics). A diferencia de un Data Warehouse tradicional que se usa para reportes internos diarios (BI), Pinot permite exponer métricas en tiempo real a millones de usuarios finales en sus aplicaciones (ej. "Quién ha visto tu perfil" en LinkedIn) con latencias sub-segundo.
 
-2. Ventajas frente a Spark o Druid
+2. **Ventajas frente a Spark o Druid**:
 - **Vs Spark**: Spark es un motor de procesamiento general, excelente para ETL y batch processing masivo, pero lento para servir miles de consultas concurrentes de baja latencia. Pinot está especializado en servir esas consultas, no en procesar ETL complejos.
 - **Vs Druid**: Ambos son similares (OLAP en tiempo real), pero Pinot suele destacar en casos de uso que requieren actualizaciones de datos (Upserts) y tiene una integración muy estrecha con el ecosistema de Kafka y formatos de índice avanzados (Star-Tree Index).
 
-3. Problemas de este despliegue
+3. **Problemas de este despliegue**:
 El despliegue actual tiene Puntos Únicos de Fallo en la capa de coordinación (1 Zookeeper) y control (1 Controller). Si el contenedor ``zookeeper-1`` falla, todo el clúster pierde la capacidad de coordinarse, aunque los servidores puedan seguir respondiendo consultas brevemente. Un despliegue productivo obligatoriamente requiere 3 nodos de Zookeeper y al menos 2 Controllers.
 
 ![Problemas](assets/05.png)
