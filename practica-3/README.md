@@ -80,10 +80,10 @@ Al no usar AWS, la seguridad se gestiona mediante la red interna de Docker.
 
 **Justificación de Puertos:**
 
-9000 (Controller): Para acceder a la consola web de administración.
-8099 (Broker): Puerto estándar para enviar consultas SQL/REST desde clientes externos.
-9092 (Kafka): Para que el script productor en Python (corriendo en el host) pueda inyectar datos.
-8098 y 8097 (Servers): Se mapearon puertos distintos en el host para evitar colisiones, aunque internamente ambos escuchan en el 8098.
+- 9000 (Controller): Para acceder a la consola web de administración.
+- 8099 (Broker): Puerto estándar para enviar consultas SQL/REST desde clientes externos.
+- 9092 (Kafka): Para que el script productor en Python (corriendo en el host) pueda inyectar datos.
+- 8098 y 8097 (Servers): Se mapearon puertos distintos en el host para evitar colisiones, aunque internamente ambos escuchan en el 8098.
 
 ---
 
