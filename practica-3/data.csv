@@ -1,0 +1,6 @@
+sensor_id,location,status,temperature,humidity,timestamp
+S-001,Warehouse-A,OK,20.5,45.0,1672531200000
+S-002,Warehouse-B,WARNING,28.2,60.1,1672534800000
+S-001,Warehouse-A,OK,21.0,44.5,1672538400000
+S-003,Factory-Main,CRITICAL,85.5,20.0,1672542000000
+S-002,Warehouse-B,OK,25.0,55.0,1672545600000
