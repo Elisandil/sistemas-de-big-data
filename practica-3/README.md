@@ -1,9 +1,9 @@
 # Informe: Implantación de un Sistema Analítico Distribuido con Apache Pinot
 
-Alumno: [Tu Nombre Completo]
+Alumno: Antonio Ortega Góngora
 Asignatura: Sistemas de Big Data
 Centro: I.E.S. Al-Andalus
-Fecha: [Fecha Actual]
+Fecha: 18/02/2026
 
 ---
 
