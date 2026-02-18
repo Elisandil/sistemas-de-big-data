@@ -1,0 +1,167 @@
+services:
+  # =========================================================================
+  # CAPA DE COORDINACIÓN (ZOOKEEPER)
+  # Arquitectura ideal: 3 Nodos (Quorum).
+  # Estado actual: 1 Nodo activo.
+  # =========================================================================
+  
+  zookeeper-1:
+    image: zookeeper:${ZOOKEEPER_IMAGE_TAG}
+    container_name: pinot-zookeeper-1
+    ports:
+      - "${ZK_PORT}:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - pinot_network
+
+  # zookeeper-2:
+  #   image: zookeeper:${ZOOKEEPER_IMAGE_TAG}
+  #   container_name: pinot-zookeeper-2
+  #   ports:
+  #     - "2182:2181"
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #   networks:
+  #     - pinot_network
+
+  # zookeeper-3:
+  #   image: zookeeper:${ZOOKEEPER_IMAGE_TAG}
+  #   container_name: pinot-zookeeper-3
+  #   ports:
+  #     - "2183:2181"
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #   networks:
+  #     - pinot_network
+
+  # =========================================================================
+  # SISTEMA DE MENSAJERÍA (KAFKA)
+  # Ingestión de datos en tiempo real.
+  # =========================================================================
+  kafka:
+    image: wurstmeister/kafka:${KAFKA_IMAGE_TAG}
+    container_name: kafka-broker
+    ports:
+      - "${KAFKA_PORT_OUTSIDE}:9092"
+    expose:
+      - "${KAFKA_PORT_INSIDE}"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: ${ZK_ADDRESS}/kafka
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:${KAFKA_PORT_INSIDE},OUTSIDE://localhost:${KAFKA_PORT_OUTSIDE}
+      KAFKA_LISTENERS: INSIDE://0.0.0.0:${KAFKA_PORT_INSIDE},OUTSIDE://0.0.0.0:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_CREATE_TOPICS: "sensor-data:1:1"
+    depends_on:
+      - zookeeper-1
+    networks:
+      - pinot_network
+
+  # =========================================================================
+  # PLANO DE CONTROL (PINOT CONTROLLER)
+  # Arquitectura ideal: 2 Nodos para HA.
+  # Estado actual: 1 Nodo activo.
+  # =========================================================================
+  
+  pinot-controller-1:
+    image: apachepinot/pinot:${PINOT_IMAGE_TAG}
+    command: "StartController -zkAddress ${ZK_ADDRESS} -clusterName ${CLUSTER_NAME} -controllerPort 9000"
+    container_name: pinot-controller-1
+    restart: unless-stopped
+    ports:
+      - "${CONTROLLER_PORT}:9000"
+    environment:
+      JAVA_OPTS: "${JAVA_OPTS}"
+    depends_on:
+      - zookeeper-1
+    networks:
+      - pinot_network
+
+  # pinot-controller-2:
+  #   image: apachepinot/pinot:${PINOT_IMAGE_TAG}
+  #   command: "StartController -zkAddress ${ZK_ADDRESS} -clusterName ${CLUSTER_NAME} -controllerPort 9000"
+  #   container_name: pinot-controller-2
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${CONTROLLER_PORT_2}:9000"
+  #   environment:
+  #     JAVA_OPTS: "${JAVA_OPTS}"
+  #   depends_on:
+  #     - zookeeper-1
+  #   networks:
+  #     - pinot_network
+
+  # =========================================================================
+  # PLANO DE CONSULTA (PINOT BROKER)
+  # Arquitectura ideal: 2 Nodos.
+  # Estado actual: 1 Nodo activo.
+  # =========================================================================
+
+  pinot-broker-1:
+    image: apachepinot/pinot:${PINOT_IMAGE_TAG}
+    command: "StartBroker -zkAddress ${ZK_ADDRESS} -clusterName ${CLUSTER_NAME}"
+    container_name: pinot-broker-1
+    restart: unless-stopped
+    ports:
+      - "${BROKER_PORT}:8099"
+    environment:
+      JAVA_OPTS: "${JAVA_OPTS}"
+    depends_on:
+      - pinot-controller-1
+    networks:
+      - pinot_network
+
+  # pinot-broker-2:
+  #   image: apachepinot/pinot:${PINOT_IMAGE_TAG}
+  #   command: "StartBroker -zkAddress ${ZK_ADDRESS} -clusterName ${CLUSTER_NAME}"
+  #   container_name: pinot-broker-2
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${BROKER_PORT_2}:8099"
+  #   environment:
+  #     JAVA_OPTS: "${JAVA_OPTS}"
+  #   depends_on:
+  #     - pinot-controller-1
+  #   networks:
+  #     - pinot_network
+
+  # =========================================================================
+  # PLANO DE DATOS (PINOT SERVER)
+  # Estado actual: 2 Nodos ACTIVOS.
+  # =========================================================================
+
+  pinot-server-1:
+    image: apachepinot/pinot:${PINOT_IMAGE_TAG}
+    command: "StartServer -zkAddress ${ZK_ADDRESS} -clusterName ${CLUSTER_NAME}"
+    container_name: pinot-server-1
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT_1}:8098"
+    environment:
+      JAVA_OPTS: "${JAVA_OPTS}"
+    depends_on:
+      - pinot-broker-1
+    networks:
+      - pinot_network
+
+  pinot-server-2:
+    image: apachepinot/pinot:${PINOT_IMAGE_TAG}
+    command: "StartServer -zkAddress ${ZK_ADDRESS} -clusterName ${CLUSTER_NAME}"
+    container_name: pinot-server-2
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT_2}:8098"
+    environment:
+      JAVA_OPTS: "${JAVA_OPTS}"
+    depends_on:
+      - pinot-broker-1
+    networks:
+      - pinot_network
+
+networks:
+  pinot_network:
+    driver: bridge
