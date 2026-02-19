@@ -1,0 +1,40 @@
+services:
+  postgres_db:
+    image: postgres:15
+    container_name: nifi_postgres_oltp
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT}"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - etl_network
+
+  nifi:
+    image: apache/nifi:latest
+    container_name: nifi_etl
+    restart: unless-stopped    
+    ports:
+      - "${NIFI_WEB_PORT}:8443"
+    environment:
+      - NIFI_WEB_HTTPS_PORT=${NIFI_INTERNAL_PORT}
+      - SINGLE_USER_CREDENTIALS_USERNAME=${NIFI_USERNAME}
+      - SINGLE_USER_CREDENTIALS_PASSWORD=${NIFI_PASSWORD}
+    volumes:
+      - ./nifi_data:/opt/nifi/nifi-current/data_exchange
+    networks:
+      - etl_network
+    depends_on:
+      - postgres_db
+
+volumes:
+  postgres_data:
+
+networks:
+  etl_network:
+    driver: bridge
