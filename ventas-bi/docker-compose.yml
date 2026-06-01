@@ -1,0 +1,120 @@
+services:
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop2.7.4-java8
+    container_name: namenode
+    restart: unless-stopped
+    volumes:
+      - namenode:/hadoop/dfs/name
+    environment:
+      CLUSTER_NAME: ventas-cluster
+    env_file:
+      - ./hadoop.env
+    ports:
+      - "50071:50070"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50070"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hadoop-net
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop2.7.4-java8
+    container_name: datanode
+    restart: unless-stopped
+    volumes:
+      - datanode:/hadoop/dfs/data
+    env_file:
+      - ./hadoop.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:50070"
+    ports:
+      - "50075:50075"
+    depends_on:
+      - namenode
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50075"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hadoop-net
+
+  hive-metastore-db:
+    image: bde2020/hive-metastore-postgresql:2.3.0
+    container_name: hive-metastore-db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hadoop-net
+
+  hive-metastore:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    container_name: hive-metastore
+    restart: unless-stopped
+    env_file:
+      - ./hadoop.env
+    command: /opt/hive/bin/hive --service metastore
+    environment:
+      SERVICE_PRECONDITION: "namenode:50070 datanode:50075 hive-metastore-db:5432"
+      HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://hive-metastore-db/metastore"
+      HIVE_SITE_CONF_hive_metastore_schema_verification: "false"
+      HIVE_SITE_CONF_datanucleus_schema_autoCreateAll: "true"
+    depends_on:
+      - namenode
+      - datanode
+      - hive-metastore-db
+    networks:
+      - hadoop-net
+
+  hive-server:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    container_name: hive-server
+    restart: unless-stopped
+    env_file:
+      - ./hadoop.env
+    environment:
+      HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://hive-metastore-db/metastore"
+      SERVICE_PRECONDITION: "hive-metastore:9083"
+      HIVE_SITE_CONF_hive_metastore_schema_verification: "false"
+      HIVE_SITE_CONF_datanucleus_schema_autoCreateAll: "true"
+    ports:
+      - "10001:10000"
+      - "10002:10002"
+    depends_on:
+      - hive-metastore
+    healthcheck:
+      test: ["CMD-SHELL", "beeline -u jdbc:hive2://localhost:10000 -e 'SHOW DATABASES;' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
+    networks:
+      - hadoop-net
+
+  ventas-app:
+    build: .
+    container_name: ventas-app
+    environment:
+      HIVE_JDBC_URL: "jdbc:hive2://hive-server:10000/default"
+    volumes:
+      - ./output:/output
+    depends_on:
+      hive-server:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - hadoop-net
+
+volumes:
+  namenode:
+  datanode:
+
+networks:
+  hadoop-net:
+    driver: bridge
