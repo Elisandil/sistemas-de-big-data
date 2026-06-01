@@ -1,0 +1,5 @@
+target/
+output/
+*.class
+*.jar
+!lib/*.jar
